@@ -4,7 +4,6 @@ import { catchError, map } from 'rxjs';
 export interface CircuitBreakerOptions {
   successThreshold: number;
   failureThreshold: number;
-  halfOpenAttemptsThreshold: number;
   openStateTime: number;
 }
 
@@ -18,7 +17,6 @@ export class CircuitBreaker {
   private failureCount: number = 0;
   private successCount: number = 0;
   private nextAttempt: number;
-  private halfOpenAttemptsCount: number = 0;
   private readonly options: CircuitBreakerOptions;
 
   constructor(options: CircuitBreakerOptions) {
@@ -28,9 +26,6 @@ export class CircuitBreaker {
         : 3,
       failureThreshold: options?.failureThreshold
         ? options.failureThreshold
-        : 3,
-      halfOpenAttemptsThreshold: options?.halfOpenAttemptsThreshold
-        ? options.halfOpenAttemptsThreshold
         : 3,
       openStateTime: options?.openStateTime ? options.openStateTime : 500,
     };
@@ -92,21 +87,18 @@ export class CircuitBreaker {
   // THE LOGIC OF THE HALFOPEN STATE IS COMPLETE.
   private handleHalfOpen(next: CallHandler): any {
     console.log('Circuit is on Half Open state! Executing the request...');
-    this.halfOpenAttemptsCount++;
     return next.handle().pipe(
       map((data) => {
         this.successCount++;
         if (this.successCount >= this.options.successThreshold) {
           console.log('Transferring the Circuit to Close state!');
           this.transferState('close'.toUpperCase());
-          this.halfOpenAttemptsCount = 0;
         }
         return data;
       }),
       catchError((err) => {
         this.registerFailure();
         console.log('receive an error from request.');
-        this.halfOpenAttemptsCount = 0;
         console.log('Transferring the Circuit to Open state!');
 
         this.transferState('open'.toUpperCase());
@@ -129,7 +121,6 @@ export class CircuitBreaker {
   private transferState(state: string) {
     this.successCount = 0;
     this.failureCount = 0;
-    this.halfOpenAttemptsCount = 0;
     this.currentState = this.CIRCUIT_STATES[state];
     if (state == 'OPEN') {
       this.nextAttempt = Date.now() + this.options.openStateTime;

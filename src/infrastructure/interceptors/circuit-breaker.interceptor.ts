@@ -9,7 +9,11 @@ export class CircuitBreakerInterceptor implements NestInterceptor {
   private readonly circuitBreaker: CircuitBreaker;
 
   constructor() {
-    let circuitBreakerOpts: CircuitBreakerOptions;
+    let circuitBreakerOpts: CircuitBreakerOptions = {
+      successThreshold: 1,
+      failureThreshold: 5,
+      openStateTime: 100
+    };
 
     this.circuitBreaker = new CircuitBreaker(circuitBreakerOpts);
   }
